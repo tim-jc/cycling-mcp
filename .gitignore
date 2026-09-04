@@ -3,6 +3,7 @@
 
 # Python bytecode and caches
 __pycache__/
+.ruff_cache/
 *.py[cod]
 
 # Secrets
