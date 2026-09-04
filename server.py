@@ -1,7 +1,9 @@
+import os
 from datetime import date, datetime
 from typing import TypedDict
 from zoneinfo import ZoneInfo
 
+import mariadb
 from mcp.server import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
@@ -18,28 +20,56 @@ class Activity(TypedDict):
     elevation_gain_metres: float
 
 
+def parse_timezone_name(timezone_name: str) -> ZoneInfo:
+    return ZoneInfo(timezone_name.split()[-1])
+
+
 def fetch_activities(start_date: date, end_date: date) -> list[Activity]:
-    activity: Activity = {
-        "activity_id": 123456789,
-        "activity_name": "Morning Ride",
-        "sport_type": "Ride",
-        "start_datetime_local": datetime(
-            2026,
-            8,
-            29,
-            7,
-            30,
-            tzinfo=ZoneInfo("Europe/London"),
-        ),
-        "distance_kilometres": 42.3,
-        "moving_time_seconds": 5400,
-        "elevation_gain_metres": 420.0,
-    }
+    with mariadb.connect(
+        host=os.environ["CYCLING_MCP_DB_HOST"],
+        port=int(os.environ["CYCLING_MCP_DB_PORT"]),
+        user=os.environ["CYCLING_MCP_DB_USER"],
+        password=os.environ["CYCLING_MCP_DB_PASSWORD"],
+        database="cycling_platform_silver",
+    ) as connection:
+        with connection.cursor(dictionary=True) as cursor:
+            cursor.execute(
+                """
+                SELECT
+                    activity_id,
+                    activity_name,
+                    sport_type,
+                    start_datetime_local,
+                    timezone_name,
+                    distance_kilometres,
+                    moving_time_seconds,
+                    elevation_gain_metres
+                FROM activities
+                WHERE start_date_local BETWEEN ? AND ?
+                ORDER BY start_datetime_local
+                """,
+                (start_date, end_date),
+            )
 
-    if start_date <= activity["start_datetime_local"].date() <= end_date:
-        return [activity]
+            rows = cursor.fetchall()
 
-    return []
+    activities: list[Activity] = []
+
+    for row in rows:
+        activity: Activity = {
+            "activity_id": row["activity_id"],
+            "activity_name": row["activity_name"],
+            "sport_type": row["sport_type"],
+            "start_datetime_local": row["start_datetime_local"].replace(
+                tzinfo=parse_timezone_name(row["timezone_name"])
+            ),
+            "distance_kilometres": row["distance_kilometres"],
+            "moving_time_seconds": row["moving_time_seconds"],
+            "elevation_gain_metres": row["elevation_gain_metres"],
+        }
+        activities.append(activity)
+
+    return activities
 
 
 @mcp.tool()
