@@ -1,6 +1,6 @@
 import os
 from datetime import date, datetime
-from typing import TypedDict
+from typing import Literal, TypedDict
 from zoneinfo import ZoneInfo
 
 import mariadb
@@ -16,6 +16,16 @@ class Activity(TypedDict):
     moving_time_seconds: int
     elevation_gain_metres: float
 
+RankingMeasure = Literal[
+    "distance",
+    "moving_time",
+    "elevation_gain",
+]
+
+RankingDirection = Literal[
+    "ascending",
+    "descending",
+]
 
 def parse_timezone_name(timezone_name: str) -> ZoneInfo:
     return ZoneInfo(timezone_name.split()[-1])
@@ -124,9 +134,6 @@ def order_activities(
     if ranking_direction not in ranking_directions:
         raise ValueError(f"Unsupported ranking direction: {ranking_direction}")
 
-    if not 1 <= quantity <= 20:
-        raise ValueError("quantity must be between 1 and 20")
-
     column = ranking_columns[ranking_measure]
     direction = ranking_directions[ranking_direction]
 
@@ -183,20 +190,15 @@ def register_activity_tools(mcp):
 
     @mcp.tool()
     def rank_activities(
-        ranking_measure: str, ranking_direction: str, quantity: int
+        ranking_measure: RankingMeasure, ranking_direction: RankingDirection, quantity: int
     ) -> list[Activity]:
         """Rank cycling activities by a specified measure and direction, returning a specified quantity of activities."""
 
-        # todo - check ranking measure supplied against allowed set and raise tool error if not in valid list
-
-        # todo - define set of allowed ranking directions. If not ASC / DESC then add code to parse supplied
-        # values and convert to ASC / DESC. Raise tool error if invalid value supplied.
-
         max_return = 25
 
-        if quantity > max_return:
-            raise ToolError(
-                f"The maximum number of activities that can be returned is {max_return}"
+        if not 1 <= quantity <= max_return:
+            raise ValueError(
+                f"quantity must be between 1 and {max_return}"
             )
 
         return order_activities(ranking_measure, ranking_direction, quantity)
