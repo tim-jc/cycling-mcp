@@ -16,6 +16,7 @@ class Activity(TypedDict):
     moving_time_seconds: int
     elevation_gain_metres: float
 
+
 RankingMeasure = Literal[
     "distance",
     "moving_time",
@@ -26,6 +27,7 @@ RankingDirection = Literal[
     "ascending",
     "descending",
 ]
+
 
 def parse_timezone_name(timezone_name: str) -> ZoneInfo:
     return ZoneInfo(timezone_name.split()[-1])
@@ -190,15 +192,15 @@ def register_activity_tools(mcp):
 
     @mcp.tool()
     def rank_activities(
-        ranking_measure: RankingMeasure, ranking_direction: RankingDirection, quantity: int
+        ranking_measure: RankingMeasure,
+        ranking_direction: RankingDirection,
+        quantity: int,
     ) -> list[Activity]:
         """Rank cycling activities by a specified measure and direction, returning a specified quantity of activities."""
 
         max_return = 25
 
         if not 1 <= quantity <= max_return:
-            raise ValueError(
-                f"quantity must be between 1 and {max_return}"
-            )
+            raise ToolError(f"quantity must be between 1 and {max_return}")
 
         return order_activities(ranking_measure, ranking_direction, quantity)

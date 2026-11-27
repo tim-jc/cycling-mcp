@@ -18,4 +18,4 @@ exec npx @modelcontextprotocol/inspector \
     -e CYCLING_MCP_DB_PORT="$CYCLING_MCP_DB_PORT" \
     -e CYCLING_MCP_DB_USER="$CYCLING_MCP_DB_USER" \
     -e CYCLING_MCP_DB_PASSWORD="$CYCLING_MCP_DB_PASSWORD" \
-    python server.py
+    "$PROJECT_ROOT/.venv/bin/python" "$PROJECT_ROOT/server.py"
